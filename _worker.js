@@ -189,7 +189,7 @@ async function render_admin(env) {
 }
 
 async function verifyCredentials(env, user, pass) {
-  const hashed_password = await env.Aof.get('admin:' + user);
+  const hashed_password = await env.AoF.get('admin:' + user);
   return (hashed_password === await passwordHash(pass));
 }
 
@@ -261,9 +261,9 @@ export default {
     if (request.headers.has("Authorization")) {
       const { user, pass, reason } = await basicAuthentication(request);
       if (reason === null)
-        authenticated = verifyCredentials(environment, user, pass);
+        authenticated = await verifyCredentials(environment, user, pass);
       else
-        render_400(reason);
+        return render_400(reason);
     }
     const { protocol, pathname } = new URL(request.url);
     if (
@@ -320,7 +320,7 @@ export default {
           return render_400('Cerere invalidă! Caractere nepermise prezente.');
         if (authenticated) {
           const hashed_password = await passwordHash(pass);
-          await environment.Aof.put('admin:' + user, hashed_password);
+          await environment.AoF.put('admin:' + user, hashed_password);
           return new Response('{success: true}');
         } else {
           const users = await environment.AoF.list({ "prefix": "admin:", "limit": 1, });
@@ -333,6 +333,8 @@ export default {
           }
         }
       }
+      if (!authenticated)
+        return render_401('Autentificare necesară!');
       if (pathname.startsWith('/blog/')) {
         var json = await request.json();
         var title = null;
